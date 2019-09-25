@@ -2,13 +2,16 @@ public class Doge extends PApplet
 {
   PImage image;
   PFont font;
-  
+
+  void settings()
+  {
+    size(800, 600);
+  }
+
   // The setup() function is run once at the beginning of your
   // Processing sketch.
   void setup()
   {
-    size(800, 600);
-  
     // 1. Find a background image for your meme.
     // Wikipedia might be a good place to start.
     // Make sure you grab a "png" or "jpg" file.
@@ -33,7 +36,7 @@ public class Doge extends PApplet
   {
     background(0);
   
-    // 3. Go back to the top of the setup() function and change size(800, 600)
+    // 3. Go back to the top of the settings() method and change size(800, 600)
     // to dimensions that better fit the aspect ratio (ratio of width to height)
     // of your image.
     //
