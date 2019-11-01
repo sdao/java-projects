@@ -2,6 +2,7 @@ Game game = new Game();
 
 void setup() {
   size(600, 600);
+  frame.setTitle("Local IP: " + Server.ip());
   game.reset();
 }
 
