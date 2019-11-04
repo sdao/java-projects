@@ -35,8 +35,8 @@ if you have time.
 - Change Ball.display() to draw the ball differently.
 - Change Player.display() to draw the player paddles differently.
 
-NETWORKING
-Once player should be the server -- this player will control the left paddle.
+NETWORKING:
+One player should be the server -- this player will control the left paddle.
 The other player should be the client -- this player will control the right paddle.
 The server player should press [0]. The default port is "12345". The titlebar will show the
 server's IP address and port number.
