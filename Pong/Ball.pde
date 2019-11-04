@@ -57,7 +57,7 @@ class Ball
   public void bounceTowardsBottom()
   {
     // TODO(REQUIRED): Implement this. See bounceTowardsRight() for a hint.
-    velocity.y = abs(velocity.y);
+    
   }
   
   /// Changes the ball's y-velocity so that it moves towards the
@@ -65,7 +65,7 @@ class Ball
   public void bounceTowardsTop()
   {
     // TODO(REQUIRED): Implement this. See bounceTowardsLeft() for a hint.
-    velocity.y = -abs(velocity.y);
+    
   }
 
   /// Whether the ball is past the left edge of the screen.
@@ -84,14 +84,14 @@ class Ball
   public boolean isPastTopEdge()
   {
     // TODO(REQUIRED): Implement this. See isPastLeftEdge() for a hint.
-    return position.y <= 0;
+    return false;
   }
 
   /// Whether the ball is beyond the bottom edge of the screen.
   public boolean isPastBottomEdge()
   {
     // TODO(REQUIRED): Implement this. See isPastRightEdge() for a hint.
-    return position.y >= height;
+    return false;
   }
 
   public void reset()

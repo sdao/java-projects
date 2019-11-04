@@ -55,17 +55,20 @@ class Player
     return yPosition + 0.5 * size.y;
   }
 
-  /// Whether the given point is inside the player's bounding rectangle.
+  /// Whether the given point is inside the player's bounding rectangle,s
+  /// i.e., whether the point's x-coordinate is between left() and right()
+  /// and its y-coordinate is between top() and bottom().
   public boolean isPointInside(PVector point)
   {
-    return point.x >= left() && point.x <= right() && point.y >= top() && point.y <= bottom();
+    // TODO(REQUIRED): Implement this.
+    return false;
   }
 
   /// Increases the player's score by one.
   public void incrementScore()
   {
     // TODO(REQUIRED): Implement this.
-    score++;
+    
   }
 
   /// Gets the current score.
@@ -92,10 +95,7 @@ class Player
     // Make sure to also prevent the player from going past the
     // bottom of the screen, which you can check by using the `height`
     // global variable.
-    yPosition += 3.0;
-    if (yPosition > height) {
-      yPosition = height;
-    }
+    
   }
 
   public void display()
@@ -122,7 +122,7 @@ class Player
     }
     
     // TODO(REQUIRED): Write the player's score.
-    text("Score: " + score, textX, 0.0); 
+    text("Score: ???", textX, 0.0); 
   }
 
   // --- WARNING! ---
