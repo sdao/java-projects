@@ -1,64 +1,44 @@
 import java.nio.*;
-import processing.net.*;
 
-class Game
+/// This class implements the core game.
+/// You won't need to edit anything inside this class to make the game work.
+/// But if you want to customize any mechanics, look at reset() and update().
+class Game extends GameBase
 {
-  Ball ball = new Ball();
-  Player leftPlayer = new Player(true);
-  Player rightPlayer = new Player(false);
-  
-  Server s;
-  Client c;
-  
-  public boolean isRunning = false;
+  private Ball ball = new Ball();
+  private Player leftPlayer = new Player(true);
+  private Player rightPlayer = new Player(false);
+  private boolean isRunning = false;
+
   public boolean leftUpKeyState = false;
   public boolean leftDownKeyState = false;
   public boolean rightUpKeyState = false;
   public boolean rightDownKeyState = false;
-  
-  void reset() {
-    ball.reset();
+
+  private long stateTimestamp = 0;
+
+  public int port() {
+    return 12345;
   }
 
-  void startServer() {
-    if (s != null) {
-      print("Server already started");
-      return;
-    }
-    if (c != null) {
-      print("Client already started");
-      return;
-    }
-    
-    s = new Server(Pong.this, 12345);
-  }
-  
-  void startClient() {
-    if (s != null) {
-      print("Server already started");
-      return;
-    }
-    if (c != null) {
-      print("Client already started");
-      return;
-    }
-    
-    c = new Client(Pong.this, "127.0.0.1", 12345);
+  public void setRunning(boolean running) {
+    isRunning = running;
+    stateTimestamp = System.currentTimeMillis();
   }
 
-  void localUpdate() {
+  private void localUpdate() {
     if (isRunning) {
         ball.move();
   
         if (ball.isPastLeftEdge()) {
           ball.reset();
           rightPlayer.incrementScore();
-          isRunning = false;
+          setRunning(false);
         }
         else if (ball.isPastRightEdge()) {
           ball.reset();
           leftPlayer.incrementScore();
-          isRunning = false;
+          setRunning(false);
         }
         
         if (ball.intersect(leftPlayer)) {
@@ -75,51 +55,49 @@ class Game
           ball.bounceTowardsTop();
         }
     }
-  
+
+    // Left player is always controllable in local mode, and controllable
+    // by the server in networked mode.
     if (leftUpKeyState) {
       leftPlayer.moveUp();
     }
     if (leftDownKeyState) {
       leftPlayer.moveDown();
     }
-    if (s != null) {
-      if (!s.active()) {
-        s = null;
-        return;
-      }
 
-      // Send new state.
-      ByteBuffer buf = ByteBuffer.allocate(4 * 3);
-      buf.putFloat(leftPlayer.yPosition);
-      buf.putFloat(ball.position.x);
-      buf.putFloat(ball.position.y);
-      s.write(buf.array());
-      
-      // Receive right player position.
-      Client sc = s.available();
-      if (sc != null) {
-        int available = sc.available();
-        int numPackets = available / 4;
-        if (numPackets > 0) {
-          byte[] rcv = new byte[numPackets * 4];
-          sc.readBytes(rcv);
-          ByteBuffer wrap = ByteBuffer.wrap(rcv);
-          int packetOffset = (numPackets - 1) * 4;
-          rightPlayer.yPosition = wrap.getFloat(packetOffset + 0);
-        }
-      }
+    // Right player is always controllable in local mode, but not
+    // controllable by the server in networked mode.
+    if (rightUpKeyState && !isServer()) {
+      rightPlayer.moveUp();
     }
-    else {
-      if (rightUpKeyState) {
-        rightPlayer.moveUp();
-      }
-      if (rightDownKeyState) {
-        rightPlayer.moveDown();
-      }
+    if (rightDownKeyState && !isServer()) {
+      rightPlayer.moveDown();
     }
   }
 
-  void remoteUpdate() {
+  private void serverUpdate() {
+    localUpdate();
+
+    // Send new state.
+    ByteBuffer tx = ByteBuffer.allocate(
+      Player.SERIALIZED_NUM_BYTES + Ball.SERIALIZED_NUM_BYTES +
+      SERIALIZED_NUM_BYTES);
+    leftPlayer.serialize(tx);
+    ball.serialize(tx);
+    this.serialize(tx);
+    sendPacket(tx);
+    
+    // Receive right player position and isRunning flag.
+    ByteBuffer rx = getLastPacket(
+      Player.SERIALIZED_NUM_BYTES + SERIALIZED_NUM_BYTES);
+    if (rx != null) {
+      rightPlayer.deserialize(rx);
+      this.deserialize(rx);
+    }
+  }
+
+  private void clientUpdate() {
+    // Right player is controllable by the client, so update now.
     if (rightUpKeyState) {
       rightPlayer.moveUp();
     }
@@ -127,33 +105,34 @@ class Game
       rightPlayer.moveDown();
     }
 
-    if (!c.active()) {
-      c = null;
-      return;
-    }
-
-    // Send right player position.
-    ByteBuffer buf = ByteBuffer.allocate(4);
-    buf.putFloat(rightPlayer.yPosition);
-    c.write(buf.array());
+    // Send right player position and isRunning flag.
+    ByteBuffer tx = ByteBuffer.allocate(
+      Player.SERIALIZED_NUM_BYTES + SERIALIZED_NUM_BYTES);
+    rightPlayer.serialize(tx);
+    this.serialize(tx);
+    sendPacket(tx);
 
     // Receive new state.
-    int available = c.available();
-    int numPackets = available / (4 * 3);
-    if (numPackets > 0) {
-      byte[] rcv = new byte[numPackets * (4 * 3)];
-      c.readBytes(rcv);
-      ByteBuffer wrap = ByteBuffer.wrap(rcv);
-      int packetOffset = (numPackets - 1) * (4 * 3);
-      leftPlayer.yPosition = wrap.getFloat(packetOffset + 0);
-      ball.position.x = wrap.getFloat(packetOffset + 4);
-      ball.position.y = wrap.getFloat(packetOffset + 8);
+    ByteBuffer rx = getLastPacket(
+      Player.SERIALIZED_NUM_BYTES + Ball.SERIALIZED_NUM_BYTES +
+      SERIALIZED_NUM_BYTES);
+    if (rx != null) {
+      leftPlayer.deserialize(rx);
+      ball.deserialize(rx);
+      this.deserialize(rx);
     }
   }
 
-  void update() {
-    if (c != null) {
-      remoteUpdate();
+  public void reset() {
+    ball.reset();
+  }
+
+  public void update() {
+    if (isServer()) {
+      serverUpdate();
+    }
+    if (isClient()) {
+      clientUpdate();
     }
     else {
       localUpdate();
@@ -162,5 +141,32 @@ class Game
     ball.display();
     leftPlayer.display();
     rightPlayer.display();
+  }
+
+  // --- WARNING! ---
+  // --- Don't touch the code below this point. ---
+  // --- It is used to implement networking. ---
+
+  static final int SERIALIZED_NUM_BYTES = Long.BYTES + 2 * Integer.BYTES;
+
+  public void serialize(ByteBuffer buffer)
+  {
+    buffer.putLong(stateTimestamp);
+    buffer.putInt(isRunning ? 1 : 0);
+    buffer.putInt(rightPlayer.getScore());
+  }
+
+  public void deserialize(ByteBuffer buffer)
+  {
+    long newStateTimestamp = buffer.getLong();
+    int newIsRunning = buffer.getInt();
+    int newRightScore = buffer.getInt();
+    if (newStateTimestamp > stateTimestamp) {
+      stateTimestamp = newStateTimestamp;
+      isRunning = (newIsRunning != 0);
+      while (rightPlayer.getScore() < newRightScore) {
+        rightPlayer.incrementScore();
+      }
+    }
   }
 }
